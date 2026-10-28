@@ -1,31 +1,66 @@
 
-import { AppBar, Toolbar, Button, Typography } from "@mui/material";
+import {
+  Box,
+  Button,
+  Chip,
+  Stack,
+  Typography,
+} from "@mui/material";
+
+import {
+  FitnessCenter,
+  PeopleAltOutlined,
+  CalendarMonthOutlined,
+  Circle,
+} from "@mui/icons-material";
 
 function Navbar({ currentPage, setCurrentPage }) {
   return (
-    <AppBar position="static">
-      <Toolbar>
-        <Typography variant="h6" sx={{ flexGrow: 1 }}>
-          Personal Trainer
-        </Typography>
+    <Box component="header" className="studio-header">
+      <Box className="brand-section">
+        <Box className="brand-icon">
+          <FitnessCenter />
+        </Box>
 
+        <Box>
+          <Typography className="brand-title">
+            PASILAN STUDIO
+          </Typography>
+          <Typography className="brand-subtitle">
+            TRAINING MANAGEMENT
+          </Typography>
+        </Box>
+      </Box>
+
+      <Stack direction="row" spacing={1} className="nav-links">
         <Button
-          color="inherit"
-          variant={currentPage === "customers" ? "outlined" : "text"}
+          className={`nav-button ${
+            currentPage === "customers" ? "active" : ""
+          }`}
+          startIcon={<PeopleAltOutlined />}
           onClick={() => setCurrentPage("customers")}
         >
           Customers
         </Button>
 
         <Button
-          color="inherit"
-          variant={currentPage === "trainings" ? "outlined" : "text"}
+          className={`nav-button ${
+            currentPage === "trainings" ? "active" : ""
+          }`}
+          startIcon={<CalendarMonthOutlined />}
           onClick={() => setCurrentPage("trainings")}
         >
           Trainings
         </Button>
-      </Toolbar>
-    </AppBar>
+      </Stack>
+
+      <Chip
+        className="live-badge"
+        icon={<Circle sx={{ fontSize: "9px !important" }} />}
+        label="Live Database"
+        size="small"
+      />
+    </Box>
   );
 }
 
