@@ -1,41 +1,58 @@
-
 import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Box,
+  Button,
   Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  IconButton,
   InputAdornment,
   Paper,
   Stack,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
 
 import { DataGrid } from "@mui/x-data-grid";
-
 import {
   CalendarMonthOutlined,
+  DeleteOutlined,
   SearchOutlined,
   TimerOutlined,
 } from "@mui/icons-material";
 
 import dayjs from "dayjs";
-import { getTrainings } from "../services/api";
+import { getTrainings, deleteTraining } from "../services/api";
 
 function Trainings() {
   const [trainings, setTrainings] = useState([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [deletingTraining, setDeletingTraining] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const loadTrainings = async () => {
+    setLoading(true);
+    try {
+      const data = await getTrainings();
+      setTrainings(data);
+      setError("");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    getTrainings()
-      .then(setTrainings)
-      .catch((err) => {
-        console.error(err);
-        setError("Could not load trainings. Please try again.");
-      })
-      .finally(() => setLoading(false));
+    loadTrainings();
   }, []);
 
   const rows = useMemo(
@@ -49,11 +66,11 @@ function Trainings() {
             }`.trim()
           : "Unknown",
       })),
-    [trainings]
+    [trainings],
   );
 
   const filteredRows = useMemo(() => {
-    const query = search.trim().toLowerCase();
+    const query = search.toLowerCase().trim();
 
     return rows.filter((training) =>
       [
@@ -63,26 +80,43 @@ function Trainings() {
         training.date && dayjs(training.date).isValid()
           ? dayjs(training.date).format("DD.MM.YYYY HH:mm")
           : "",
-      ]
-        .map((value) => String(value ?? ""))
-        .join(" ")
-        .toLowerCase()
-        .includes(query)
+      ].some((value) =>
+        String(value ?? "")
+          .toLowerCase()
+          .includes(query),
+      ),
     );
   }, [rows, search]);
 
   const totalMinutes = rows.reduce(
-    (total, training) => total + Number(training.duration || 0),
-    0
+    (sum, training) => sum + Number(training.duration || 0),
+    0,
   );
+
+  const handleDelete = async () => {
+    if (!deletingTraining) return;
+
+    setDeleting(true);
+
+    try {
+      await deleteTraining(deletingTraining.id);
+      setNotice("Training deleted successfully.");
+      setDeletingTraining(null);
+      await loadTrainings();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const columns = [
     {
       field: "date",
       headerName: "Date & Time",
+      type: "dateTime",
       flex: 1.5,
       minWidth: 190,
-      type: "dateTime",
       valueFormatter: (value) =>
         value && dayjs(value).isValid()
           ? dayjs(value).format("DD.MM.YYYY HH:mm")
@@ -104,9 +138,9 @@ function Trainings() {
     {
       field: "duration",
       headerName: "Duration (min)",
+      type: "number",
       flex: 1,
       minWidth: 140,
-      type: "number",
     },
     {
       field: "customerName",
@@ -114,19 +148,31 @@ function Trainings() {
       flex: 1.5,
       minWidth: 180,
     },
+    {
+      field: "actions",
+      headerName: "Actions",
+      width: 110,
+      sortable: false,
+      filterable: false,
+      renderCell: (params) => (
+        <Tooltip title="Delete training">
+          <IconButton
+            size="small"
+            color="error"
+            onClick={() => setDeletingTraining(params.row)}
+          >
+            <DeleteOutlined fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      ),
+    },
   ];
 
   return (
     <Box className="page-container">
       <Box className="page-heading">
-        <Typography className="eyebrow">
-          TRAINING OVERVIEW
-        </Typography>
-
-        <Typography variant="h4">
-          Training Sessions
-        </Typography>
-
+        <Typography className="eyebrow">TRAINING OVERVIEW</Typography>
+        <Typography variant="h4">Training Sessions</Typography>
         <Typography color="text.secondary">
           Every session counts. Track your studio's progress.
         </Typography>
@@ -137,12 +183,8 @@ function Trainings() {
           <Box className="stat-icon">
             <CalendarMonthOutlined />
           </Box>
-
           <Box>
-            <Typography className="stat-label">
-              TOTAL SESSIONS
-            </Typography>
-
+            <Typography className="stat-label">TOTAL SESSIONS</Typography>
             <Typography className="stat-value">
               {loading ? "..." : error ? "—" : trainings.length}
             </Typography>
@@ -153,18 +195,26 @@ function Trainings() {
           <Box className="stat-icon">
             <TimerOutlined />
           </Box>
-
           <Box>
-            <Typography className="stat-label">
-              TRAINING HOURS
-            </Typography>
-
+            <Typography className="stat-label">TRAINING HOURS</Typography>
             <Typography className="stat-value">
               {loading ? "..." : error ? "—" : (totalMinutes / 60).toFixed(1)}
             </Typography>
           </Box>
         </Paper>
       </Box>
+
+      {notice && (
+        <Alert severity="success" onClose={() => setNotice("")} sx={{ mb: 2 }}>
+          {notice}
+        </Alert>
+      )}
+
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
 
       <Paper className="table-card" elevation={0}>
         <Stack
@@ -175,10 +225,7 @@ function Trainings() {
           className="table-heading"
         >
           <Box>
-            <Typography variant="h6">
-              Session History
-            </Typography>
-
+            <Typography variant="h6">Session History</Typography>
             <Typography variant="body2" color="text.secondary">
               {filteredRows.length} sessions displayed
             </Typography>
@@ -202,12 +249,6 @@ function Trainings() {
           />
         </Stack>
 
-        {error && (
-          <Alert severity="error" sx={{ m: 2 }}>
-            {error}
-          </Alert>
-        )}
-
         <DataGrid
           rows={filteredRows}
           columns={columns}
@@ -219,13 +260,43 @@ function Trainings() {
             pagination: {
               paginationModel: { pageSize: 10 },
             },
+            sorting: {
+              sortModel: [{ field: "date", sort: "desc" }],
+            },
           }}
-          sx={{
-            border: 0,
-            minHeight: 460,
-          }}
+          sx={{ border: 0, minHeight: 460 }}
         />
       </Paper>
+
+      <Dialog
+        open={Boolean(deletingTraining)}
+        onClose={deleting ? undefined : () => setDeletingTraining(null)}
+      >
+        <DialogTitle>Delete Training?</DialogTitle>
+
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete the {deletingTraining?.activity}{" "}
+            session for {deletingTraining?.customerName}? This action cannot be
+            undone.
+          </DialogContentText>
+        </DialogContent>
+
+        <DialogActions>
+          <Button disabled={deleting} onClick={() => setDeletingTraining(null)}>
+            No, Cancel
+          </Button>
+
+          <Button
+            variant="contained"
+            color="error"
+            disabled={deleting}
+            onClick={handleDelete}
+          >
+            {deleting ? "Deleting..." : "Yes, Delete"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

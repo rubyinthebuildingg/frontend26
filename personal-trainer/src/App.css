@@ -182,3 +182,38 @@
     border-right-color: var(--border);
   }
 }
+
+.MuiButton-containedPrimary {
+  background-color: #8b5cf6;
+  color: #ffffff;
+  font-weight: 600;
+  text-transform: none;
+}
+
+.MuiButton-containedPrimary:hover {
+  background-color: #7c3aed;
+}
+
+.MuiDialog-paper {
+  background: #1c1d29 !important;
+  border: 1px solid #383849;
+  border-radius: 16px !important;
+}
+
+.MuiDialogTitle-root {
+  font-weight: 700 !important;
+  padding: 24px 24px 12px !important;
+}
+
+.MuiDialogActions-root {
+  border-top: 1px solid #303041;
+}
+
+.MuiDataGrid-cell .MuiIconButton-root:hover {
+  background: rgba(139, 92, 246, 0.15);
+}
+
+.MuiDataGrid-cell .MuiIconButton-colorError:hover {
+  background: rgba(239, 68, 68, 0.12);
+}
+
